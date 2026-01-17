@@ -144,7 +144,7 @@ const handler = createMcpHandler(async (server) => {
     {
       title: itineraryWidget.title,
       description: "Generate a cinematic travel itinerary based on location and vibe (e.g., Wes Anderson, Cyberpunk)",
-      inputSchema: TravelInputSchema,
+      inputSchema: TravelInputSchema.shape,
       _meta: widgetMeta(itineraryWidget),
     },
     async (inputs) => {
@@ -156,7 +156,7 @@ const handler = createMcpHandler(async (server) => {
             text: `Here is a ${inputs.vibe} itinerary for ${inputs.location}.`,
           }
         ],
-        structuredContent: result,
+        structuredContent: result as any,
         _meta: widgetMeta(itineraryWidget),
       };
     }
