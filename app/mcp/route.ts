@@ -1,6 +1,7 @@
 import { baseURL } from "@/baseUrl";
 import { createMcpHandler } from "mcp-handler";
 import { z } from "zod";
+import { get_cinematic_itinerary, TravelInputSchema } from "@/server/tools/travel_planner";
 
 const getAppsSdkCompatibleHtml = async (baseUrl: string, path: string) => {
   const result = await fetch(`${baseUrl}${path}`);
@@ -30,6 +31,7 @@ function widgetMeta(widget: ContentWidget) {
 
 const handler = createMcpHandler(async (server) => {
   const html = await getAppsSdkCompatibleHtml(baseURL, "/");
+  const itineraryHtml = await getAppsSdkCompatibleHtml(baseURL, "/widget/itinerary");
 
   const contentWidget: ContentWidget = {
     id: "show_content",
@@ -39,8 +41,20 @@ const handler = createMcpHandler(async (server) => {
     invoked: "Content loaded",
     html: html,
     description: "Displays the homepage content",
-    widgetDomain: "https://nextjs.org/docs",
+    widgetDomain: "https://nextjs.org/docs", // Keeping original domain for existing widget
   };
+
+  const itineraryWidget: ContentWidget = {
+    id: "cinematic_itinerary_widget",
+    title: "Cinematic Itinerary",
+    templateUri: "ui://widget/itinerary.html",
+    invoking: "Planning trip...",
+    invoked: "Trip planned",
+    html: itineraryHtml,
+    description: "Displays a cinematic travel itinerary",
+    widgetDomain: "https://chatgpt.com", // Or appropriate domain
+  };
+
   server.registerResource(
     "content-widget",
     contentWidget.templateUri,
@@ -63,6 +77,34 @@ const handler = createMcpHandler(async (server) => {
             "openai/widgetDescription": contentWidget.description,
             "openai/widgetPrefersBorder": true,
             "openai/widgetDomain": contentWidget.widgetDomain,
+          },
+        },
+      ],
+    })
+  );
+
+  server.registerResource(
+    "itinerary-widget",
+    itineraryWidget.templateUri,
+    {
+      title: itineraryWidget.title,
+      description: itineraryWidget.description,
+      mimeType: "text/html+skybridge",
+      _meta: {
+        "openai/widgetDescription": itineraryWidget.description,
+        "openai/widgetPrefersBorder": true,
+      },
+    },
+    async (uri) => ({
+      contents: [
+        {
+          uri: uri.href,
+          mimeType: "text/html+skybridge",
+          text: `<html>${itineraryWidget.html}</html>`,
+          _meta: {
+            "openai/widgetDescription": itineraryWidget.description,
+            "openai/widgetPrefersBorder": true,
+            "openai/widgetDomain": itineraryWidget.widgetDomain,
           },
         },
       ],
@@ -93,6 +135,29 @@ const handler = createMcpHandler(async (server) => {
           timestamp: new Date().toISOString(),
         },
         _meta: widgetMeta(contentWidget),
+      };
+    }
+  );
+
+  server.registerTool(
+    "get_cinematic_itinerary",
+    {
+      title: itineraryWidget.title,
+      description: "Generate a cinematic travel itinerary based on location and vibe (e.g., Wes Anderson, Cyberpunk)",
+      inputSchema: TravelInputSchema,
+      _meta: widgetMeta(itineraryWidget),
+    },
+    async (inputs) => {
+      const result = await get_cinematic_itinerary(inputs.location, inputs.vibe);
+      return {
+        content: [
+          {
+            type: "text",
+            text: `Here is a ${inputs.vibe} itinerary for ${inputs.location}.`,
+          }
+        ],
+        structuredContent: result,
+        _meta: widgetMeta(itineraryWidget),
       };
     }
   );

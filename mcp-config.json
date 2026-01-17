@@ -1,0 +1,12 @@
+{
+    "mcpServers": {
+        "cinematic-vibe-planner": {
+            "command": "npm",
+            "args": [
+                "run",
+                "dev"
+            ],
+            "url": "http://localhost:3000/mcp"
+        }
+    }
+}
